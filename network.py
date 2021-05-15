@@ -26,15 +26,17 @@ from keras.wrappers.scikit_learn import KerasClassifier
 from keras.models import model_from_json
 from keras.callbacks import TensorBoard, ModelCheckpoint
 
-
-dataframe = pd.read_csv('baza.csv') 
+def load_data(name):
+    dataframe = pd.read_csv(name +'.csv') 
 #columnsToNormalise = ['n_tokens_title','n_tokens_content','num_hrefs','num_imgs','num_videos','average_token_length','num_keywords','global_sentiment_polarity','title_sentiment_polarity']
 #dataframe[columnsToNormalise] = preprocessing.StandardScaler().fit_transform(dataframe[columnsToNormalise])
-columbs = ["data_channel_is_lifestyle", "data_channel_is_entertainment", "data_channel_is_bus", "data_channel_is_socmed", "data_channel_is_tech", "data_channel_is_world", "data_channel_is_other"]
-dataset = dataframe.values
-X = dataset[:,0:40].astype(float)
-Y = dataset[:,40:47]
-dataframe.to_csv('./output/outputStandart.csv', index = False, header=True)
+    columbs = ["data_channel_is_lifestyle", "data_channel_is_entertainment", "data_channel_is_bus", "data_channel_is_socmed", "data_channel_is_tech", "data_channel_is_world", "data_channel_is_other"]
+    dataset = dataframe.values
+    X = dataset[:,0:40].astype(float)
+    Y = dataset[:,40:47]
+    dataframe.to_csv('./output/outputStandart.csv', index = False, header=True)
+    return X,Y,dataframe,columbs
+    
 def create_model():
 	# create model
   model = Sequential()
@@ -53,6 +55,7 @@ def create_model():
   print(model.summary())
   return model
 
+
 def save_model(model,name):
 	# serialize model to JSON
 	model_json = model.to_json()
@@ -62,8 +65,17 @@ def save_model(model,name):
 	model.save_weights("model" + name + ".h5")
 	print("Saved model to disk")
 
-print(Y[0])
+def load_model(name):
+    json_file = open('model.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+    # load weights into new model
+    loaded_model.load_weights("model.h5")
+    print("Loaded model from disk")
 
+
+X,Y,dataframe,columbs = load_data('baza')
 testY = dataframe[["data_channel_is_lifestyle", "data_channel_is_entertainment", "data_channel_is_bus", "data_channel_is_socmed", "data_channel_is_tech", "data_channel_is_world", "data_channel_is_other"]]
 categories = list(testY.columns)
 cat_count = [] 

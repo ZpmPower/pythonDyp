@@ -16,27 +16,28 @@ def load_model(name):
 
     return loaded_model
 
-dataframe = pd.read_csv('bazaSelfRef.csv') 
-dataset = dataframe.values
-X = dataset[:,0:32].astype(float)
-Y = dataset[:,32:38]
-model = load_model("1")
 
+#dataframe = pd.read_csv('bazaSelfRef.csv') 
+#dataset = dataframe.values
+#X = dataset[:,0:32].astype(float)
+#Y = dataset[:,32:38]
+#model = load_model("1")
 
-std_scale = preprocessing.StandardScaler().fit(X)
-X_std = std_scale.transform(X)
-x_train, x_test, y_train, y_test = train_test_split(X_std, Y , train_size = 0.9, random_state =  90)
-
-Y_test = np.argmax(y_test, axis=1) # Convert one-hot to index
-y_pred = model.predict_classes(x_test)
-print(classification_report(Y_test, y_pred))
-#print(len(y_pred))
-count_cool = 0
-for i in range(3847):
-    if y_pred[i]==Y_test[i]:
-        count_cool+=1
-print("Good:" + str(count_cool))
-print("All:" + str(len(Y_test)))
-print("test: " + str(count_cool / len(Y_test)))
+#
+#std_scale = preprocessing.StandardScaler().fit(X)
+#X_std = std_scale.transform(X)
+#x_train, x_test, y_train, y_test = train_test_split(X_std, Y , train_size = 0.9, random_state =  90)
+#
+#Y_test = np.argmax(y_test, axis=1) # Convert one-hot to index
+#y_pred = model.predict_classes(x_test)
+#print(classification_report(Y_test, y_pred))
+##print(len(y_pred))
+#count_cool = 0
+#for i in range(3847):
+#    if y_pred[i]==Y_test[i]:
+#        count_cool+=1
+#print("Good:" + str(count_cool))
+#print("All:" + str(len(Y_test)))
+#print("test: " + str(count_cool / len(Y_test)))
 
 

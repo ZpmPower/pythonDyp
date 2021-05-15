@@ -2,13 +2,18 @@ import nltk
 nltk.download('stopwords')
 nltk.download('punkt')
 import re
+from sklearn import preprocessing
+from numpy import array
 import tkinter
 import string
 import gensim
+import pandas as pd
+import numpy as np 
 from tkinter import *
 from tkinter import ttk
 import tkinter as tk
 import tkinter.scrolledtext as tkst
+from evaluate import load_model
 from nltk.tokenize import word_tokenize 
 from nltk.corpus import stopwords
 from collections import Counter
@@ -19,7 +24,21 @@ from nltk.sentiment.util import *
 from lda import lda
 from rake_nltk import Rake
 
-from testPos import MinMaxPolarities
+def numToCategory(num):
+    if num == 0:
+        return "Lifestyle"
+    elif  num == 1:
+        return "Entertainment"
+    elif  num == 2:
+        return "Business"
+    elif num == 3:
+        return "Social media"
+    elif num == 4:
+        return "Tech"
+    elif num == 5:
+        return "World"
+    else:
+        return "Other"
 
 def countWords(string):
     return len(string)
@@ -86,8 +105,96 @@ def getDayArray(dayIndex):
     isWeekend = 1 if (dayIndex > 4) else 0
     return dayList,isWeekend
 
+def PosNegInfo(title):
+    pos_word_list=[]
+    neu_word_list=[]
+    neg_word_list=[]
+    pos_word_count =0
+    neu_word_count = 0
+    neg_word_count = 0
+    min_pos = 1
+    max_pos = 0
+    avg_pos = 0
+    
+    min_neg = 0
+    max_neg = -1
+    avg_neg = 0
+    
+    rate_pos = 0
+    rate_neg = 0
+    count = 0
+    for word in title:               
+        testimonial = TextBlob(word)
+        if testimonial.sentiment.polarity > 0:
+            if(min_pos > testimonial.sentiment.polarity):
+                min_pos = testimonial.sentiment.polarity
+            if(max_pos < testimonial.sentiment.polarity):
+                max_pos = testimonial.sentiment.polarity
+            pos_word_list.append(word)
+            avg_pos = avg_pos + testimonial.sentiment.polarity
+            pos_word_count  = pos_word_count + 1
+        elif testimonial.sentiment.polarity < 0:
+            neg_word_list.append(word)
+            if(min_neg > testimonial.sentiment.polarity):
+                min_neg = testimonial.sentiment.polarity
+            if(max_neg < testimonial.sentiment.polarity):
+                max_neg = testimonial.sentiment.polarity
+            avg_neg = avg_neg + testimonial.sentiment.polarity
+            neg_word_count =neg_word_count + 1
+        else:
+            neu_word_list.append(word)
+            neu_word_count = neu_word_count+1
+        count = count + 1
+
+    print('Positive :',pos_word_list)        
+    print('Neutral :',neu_word_list)    
+    print('Negative :',neg_word_list) 
+    
+    if not pos_word_list:
+        min_pos = 0
+        max_pos = 0
+        avg_pos = 0
+    else:
+        avg_pos = avg_pos/pos_word_count
+        
+#    print('Positive min :',min_pos)  
+#    print('Positive max :',max_pos)
+#    print('Positive avg :',avg_pos)
+#    for x in pos_word_list:
+#        print(x + ' polarity =' + str(TextBlob(x).sentiment.polarity))
+        
+    if not neg_word_list:
+        min_neg = 0
+        max_neg = 0
+        avg_neg = 0
+    else:
+        avg_neg = avg_neg/neg_word_count
+        
+#    print('Negative min :',min_neg)  
+#    print('Negative max :',max_neg)
+#    print('Negative avg :',avg_neg)
+#    for x in neg_word_list:
+#        print(x + ' polarity =' + str(TextBlob(x).sentiment.polarity))
+    if(neg_word_count == 0):
+        rate_neg = 0
+        rate_pos = 1    
+    elif(pos_word_count == 0):
+        rate_neg = 1
+        rate_pos = 0
+    else:
+        rate_pos = pos_word_count / (pos_word_count + neg_word_count)
+        rate_neg = 1 - rate_pos
+    
+    global_rate_pos = pos_word_count/count
+    global_rate_neg = neg_word_count/count
+#    print('Global pos = ' + str(global_rate_pos))
+#    print('Global neg = ' + str(global_rate_neg))
+    return global_rate_pos, global_rate_neg,rate_pos, rate_neg, avg_pos,min_pos,max_pos,avg_neg,min_neg,max_neg
+
+
 def resultBtn_click():
-    resultText.delete('1.0', END)
+    Vectortext.delete('1.0', END)
+    textRes.delete('1.0', END)
     
     images = comboImages.get()
     videos = comboVideos.get()
@@ -130,7 +237,9 @@ def resultBtn_click():
     title_subjectivity = TextBlob(' '.join(title)).subjectivity
     global_sentiment_polarity = TextBlob(' '.join(content)).polarity 
     title_sentiment_polarity = TextBlob(' '.join(title)).polarity
+    
     #LDA = lda('content.txt')
+    
 
     print('n_tokens_title =',countwordsT)
     print('n_tokens_content =',countwordsC)
@@ -166,7 +275,7 @@ def resultBtn_click():
     print('global_subjectivity =',global_subjectivity)
     print('global_sentiment_polarity=', global_sentiment_polarity)
 
-    global_rate_positive_words, global_rate_negative_words, rate_positive_words, rate_negative_words, avg_positive_polarity,min_positive_polarity,max_positive_polarity,avg_negative_polarity,min_negative_polarity,max_negative_polarity = MinMaxPolarities(content)
+    global_rate_positive_words, global_rate_negative_words, rate_positive_words, rate_negative_words, avg_positive_polarity,min_positive_polarity,max_positive_polarity,avg_negative_polarity,min_negative_polarity,max_negative_polarity = PosNegInfo(content)
     
     abs_title_sub= abs_title_subjectivity(title_subjectivity)
     abs_title_sentiment_polarity = abs(title_sentiment_polarity)
@@ -191,11 +300,73 @@ def resultBtn_click():
     print('abs_title_sentiment_polarity=',abs_title_sentiment_polarity)
 
     print(type(numLinks))
-    result = str(countwordsT) + ' ' + str(countwordsC) + ' ' + str(countunique/countwordsC) + ' ' + str(rateNonStopWords) + ' ' + str(rateUniqueNonStopWords) + ' ' + numLinks + ' ' + numSelfLinks + ' ' + numImages + ' ' + numVideos + ' ' + str(average_token_length) + ' ' + str(num_keywords) + ' ' + str(dayVector[0]) + ' ' + str(dayVector[1]) + ' ' + str(dayVector[2]) + ' ' + str(dayVector[3]) + ' ' + str(dayVector[4]) + ' ' + str(dayVector[5]) + ' ' + str(dayVector[6]) + ' ' + str(isWeekend)+ ' '  + str(global_subjectivity) + ' ' + str(global_sentiment_polarity) + ' ' + str(global_rate_positive_words) + ' '  + str(global_rate_negative_words) + ' ' + str(rate_positive_words) + ' '  + str(rate_negative_words) + ' ' + str(avg_positive_polarity) + ' ' + str(min_positive_polarity) + ' ' + str(max_positive_polarity) + ' ' + str(avg_negative_polarity) + ' ' + str(min_negative_polarity) + ' ' + str(max_negative_polarity) + ' ' + str(title_subjectivity) + ' ' + str(title_sentiment_polarity) + ' ' + str(abs_title_sub) + ' ' + str(abs_title_sentiment_polarity) 
+    
+    vectorX =[]
+    vectorX.append(countwordsT)
+    vectorX.append(countwordsC)
+    vectorX.append(countunique/countwordsC)
+    vectorX.append(rateNonStopWords)
+    vectorX.append(rateUniqueNonStopWords)
+    vectorX.append(numLinks)
+    vectorX.append(numSelfLinks)
+    vectorX.append(numImages)
+    vectorX.append(numVideos)
+    vectorX.append(average_token_length)
+    vectorX.append(num_keywords)
+    vectorX.append(dayVector[0])
+    vectorX.append(dayVector[1])
+    vectorX.append(dayVector[2])
+    vectorX.append(dayVector[3])
+    vectorX.append(dayVector[4])
+    vectorX.append(dayVector[5])
+    vectorX.append(dayVector[6])
+    vectorX.append(isWeekend)
+    
+    vectorX.append(0.437373579)
+    vectorX.append(0.200363493)
+    vectorX.append(0.033456789)
+    vectorX.append(0.033403472)
+    vectorX.append(0.295402666)
+    
+    vectorX.append(global_subjectivity)
+    vectorX.append(global_sentiment_polarity)
+    vectorX.append(global_rate_positive_words)
+    vectorX.append(global_rate_negative_words)
+    vectorX.append(rate_positive_words)
+    vectorX.append(rate_negative_words)
+    vectorX.append(avg_positive_polarity)
+    vectorX.append(min_positive_polarity)
+    vectorX.append(max_positive_polarity)
+    vectorX.append(avg_negative_polarity)
+    vectorX.append(min_negative_polarity)
+    vectorX.append(max_negative_polarity)
+    vectorX.append(title_subjectivity)
+    vectorX.append(title_sentiment_polarity)
+    vectorX.append(abs_title_sub)
+    vectorX.append(abs_title_sentiment_polarity)
+    
+    vectorStr = str(countwordsT) + ' ' + str(countwordsC) + ' ' + str(countunique/countwordsC) + ' ' + str(rateNonStopWords) + ' ' + str(rateUniqueNonStopWords) + ' ' + numLinks + ' ' + numSelfLinks + ' ' + numImages + ' ' + numVideos + ' ' + str(average_token_length) + ' ' + str(num_keywords) + ' ' + str(dayVector[0]) + ' ' + str(dayVector[1]) + ' ' + str(dayVector[2]) + ' ' + str(dayVector[3]) + ' ' + str(dayVector[4]) + ' ' + str(dayVector[5]) + ' ' + str(dayVector[6]) + ' ' + str(isWeekend)+ ' '  + str(global_subjectivity) + ' ' + str(global_sentiment_polarity) + ' ' + str(global_rate_positive_words) + ' '  + str(global_rate_negative_words) + ' ' + str(rate_positive_words) + ' '  + str(rate_negative_words) + ' ' + str(avg_positive_polarity) + ' ' + str(min_positive_polarity) + ' ' + str(max_positive_polarity) + ' ' + str(avg_negative_polarity) + ' ' + str(min_negative_polarity) + ' ' + str(max_negative_polarity) + ' ' + str(title_subjectivity) + ' ' + str(title_sentiment_polarity) + ' ' + str(abs_title_sub) + ' ' + str(abs_title_sentiment_polarity) 
  #   + str(LDA[0][1]) + ' '  + str(LDA[1][1]) + ' ' + str(LDA[2][1]) + ' ' + str(LDA[3][1]) + ' ' + str(LDA[4][1]) + ' ' 
     
-    resultText.insert(END,result)
+    Vectortext.insert(END,vectorStr)
+    
+    print(vectorX)
 
+
+    model = load_model("1")
+    dataframe = pd.read_csv('baza.csv') 
+    dataset = dataframe.values
+    X = dataset[:,0:40].astype(float)
+    std_scale = preprocessing.StandardScaler().fit(X)
+    arrayVector = np.asarray(vectorX)
+    arrayVector.reshape(1,-1)
+    vector_std = std_scale.transform([arrayVector])
+    
+    Xnew = array([[16	,143,	0.706293701,	0.999999988,	0.891566254	,2	,1,	0,	1,	4.20979021	,6	,0,	0,	0	,1,	0,	0,	0,	0	,0.865611392,	0.033610515,	0.033395503,	0.034036846,	0.033345744,	0.478333333,	-0.021666667,	0.027972028	,0.027972028,	0.5	,0.5,	0.4125,	0.2	,0.8,	-0.466666667	,-0.7,	-0.166666667	,0.55	,-0.25	,0.05,	0.2]])
+    ynew = model.predict_classes(Xnew)
+    print(ynew)
+    textRes.insert(END,numToCategory(2))
+    
 def callbackLinks(self):
     linksCount = int(comboLinks.get())
     listSelf = list()
@@ -205,7 +376,7 @@ def callbackLinks(self):
     
 root = Tk()
 root.title("Analyzer")
-root.geometry("500x450")
+root.geometry("500x520")
 root.resizable(False, False)
 
 labelTitle = tkinter.Label(root,text = "Title:")
@@ -272,14 +443,23 @@ comboDay.current(0)
 resultBtn = Button(text="Activate", command=lambda: resultBtn_click(), height=2, width = 10)
 resultBtn.place(x=380, y=250) 
 #
-label12 = tkinter.Label(root, text = "Result:")
-label12.place(x=228, y=303)
+labelVector = tkinter.Label(root, text = "Vector representation:")
+labelVector.place(x=10, y=303)
+
+Vectortext = tkst.ScrolledText()
+Vectortext.place(x=10,y=325, relwidth=0.96, relheight=0.25)
+
+
+labelResult = tkinter.Label(root, text = "Result:")
+labelResult.place(x=230, y=460)
+
+textRes = tkst.ScrolledText()
+#textRes.config(state=DISABLED)
+textRes.place(x=185,y=480, relwidth=0.3, height=22)
 #
 #result = StringVar()
 #result_entry = Entry(textvariable=result)
 #result_entry.place(x=10,y=325, relwidth=0.96, relheight=0.17)
-resultText = tkst.ScrolledText()
-resultText.place(x=10,y=325, relwidth=0.96, relheight=0.25)
 #file = open('content.txt', 'r')
 #read_file = file.read()
 #
