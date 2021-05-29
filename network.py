@@ -76,7 +76,7 @@ def load_model(name):
 
 
 X,Y,dataframe,columbs = load_data('baza')
-testY = dataframe[["data_channel_is_lifestyle", "data_channel_is_entertainment", "data_channel_is_bus", "data_channel_is_socmed", "data_channel_is_tech", "data_channel_is_world", "data_channel_is_other"]]
+testY = dataframe[["lifestyle", "data_channel_is_entertainment", "data_channel_is_bus", "data_channel_is_socmed", "data_channel_is_tech", "data_channel_is_world", "data_channel_is_other"]]
 categories = list(testY.columns)
 cat_count = [] 
 x = 0;
@@ -85,7 +85,7 @@ for c in columbs:
     x+=testY[c].value_counts()[1]
 
 #DrawPlot
-#drawCategoryCountPlot(categories,cat_count)
+drawCategoryCountPlot(categories,cat_count)
 
 #####################################################
 ##SCALERS
@@ -101,7 +101,8 @@ for c in columbs:
 
 std_scale = preprocessing.StandardScaler().fit(X)
 X_std = std_scale.transform(X)
-
+print(X[0])
+print(X_std[0])
 x_train, x_test, y_train, y_test = train_test_split(X_std, Y , train_size = 0.90, random_state =  90)
 
 model = create_model()
@@ -110,7 +111,7 @@ filepath="./weight/weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
 
-history = model.fit(x_train, y_train, epochs=100, batch_size=1000, verbose=1, validation_data=(x_test, y_test))
+history = model.fit(x_train, y_train, epochs=150, batch_size=1000, verbose=1, validation_data=(x_test, y_test))
 
 # plot learning curves
 pyplot.plot(history.history['acc'], label='train')
